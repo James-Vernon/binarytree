@@ -1,81 +1,153 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Node(object):
+class BaseNode:
     """
-    BaseNode will be the abstract class which will make up the tree. The basic elements of a node are
+    Node will be the abstract class which will make up the tree. The basic elements of a node are
     root, left branch, and right branch.
-
-    Is it appropriate to extend object?
-
-
     """
+    __metaclass__ = ABCMeta
 
-    def __init__(self, data, left, right):
+    def __init__(self, data, left=None, right=None):
         self.data = data
         self.left = left
         self.right = right
 
+    def compare_to(self, item) -> int:
+        """
+       :param value: object to be compared to
+       :return: negative integer for less than, zero for equal, positive integer for greater than
+       """
+
+    pass
+
+    def is_leaf(self):
+        if self.left or self.right:
+            return False
+        else:
+            return True
+
     def __str__(self) -> str:
-        return self.data
+        return str(self.data)
 
 
 class Tree:
-
-    def __init__(self, root: Node = None, left_tree: Node = None, right_tree: Node = None):
-
+    def __init__(self, root: BaseNode = None):
         self.root = root
 
-        if left_tree:
-            self.root.left = left_tree
-        if right_tree:
-            self.root.right = right_tree
+    def get_node(self):
+        yield self.root
 
-    def get_left(self):
+    def set_left(self, node):
+        self.root.left = node
+
+    def set_right(self, node):
+        self.root.right = node
+
+    def move_left(self):
+        return self.root.left
+
+    def move_right(self):
+        return self.root.right
+
+    def set_children(self, left, right):
+        self.root.left = left
+        self.root.right = right
+
+    def get_children(self):
+        return self.root.left, self.root.right
+
+    def get_left_tree(self):
         if self.root and self.root.left:
             return Tree(self.root.left)
         else:
             return None
 
-    def get_right(self):
+    def get_right_tree(self):
         if self.root and self.root.right:
             return Tree(self.root.right)
         else:
             return None
 
-    def is_leaf(self):
-        return self.root.left and self.root.right
+    def pre_order_traverse(self):
+        node_stack = [self.root]
+        out_stack = []
 
-    def pre_order_traverse(self, node: Node, depth=1):
-        """
+        while node_stack:
+            curr_node = node_stack.pop()
+            out_stack.append(curr_node)
+            if curr_node.left:
+                node_stack.append(curr_node.left)
 
-        :param node: starting node
-        :param depth: nodes to traverse. 1 if not specified
-        :return: string representation of added elements
+            if curr_node.right:
+                node_stack.append(curr_node.right)
 
-        TODO: add print object argument
-        """
-        output = ''
+        out_stack.append(self.root)
 
-        for i in range(depth):
-            if not node:
-                output += f'empty\n'
-            else:
-                output += f'{node.__str__()}'
-                self.pre_order_traverse(self.root.left, depth + 1)
-                self.pre_order_traverse(self.root.right, depth + 1)
+        while out_stack:
+            yield out_stack.pop()
 
     def post_order_traverse(self):
-        pass
+        """
+        left, right, root
+        :return:
+        """
+        node_stack = [self.root]
+        out_stack = []
+
+        while node_stack:
+            curr_node = node_stack.pop()
+            out_stack.append(curr_node)
+
+            if curr_node.left:
+                node_stack.append(curr_node.left)
+
+            if curr_node.right:
+                node_stack.append(curr_node.right)
+
+        while out_stack:
+            yield out_stack.pop()
 
     def in_order_traverse(self):
-        pass
+        """
+        1. Start at the root node. Push it on the stack.
+        2. Check:
+
+            If there is a left node and right node
+            Move to the left node. Update the root node to the current node
+
+            If there is a left node but not a right node
+            Move to the left node. Repeat
+
+            If there is a right node but not a left node
+            Push the root. Yield the root and move to the right
+
+            Else there are no child nodes
+                Push on to the stack yeild the node
+
+        :param node:
+        :return:
+        """
+        curr_node = self.root
+        node_stack = []
+
+        while curr_node or node_stack:
+            # go left until null
+            if curr_node:
+                node_stack.append(curr_node)
+                curr_node = curr_node.left
+            # once null pop, and print move right
+            else:
+                curr_node = node_stack.pop()
+                yield curr_node
+
+                curr_node = curr_node.right
 
     def __str__(self):
-        return self.root
+        return Tree(self.root, self.left_tree, self.right_tree)
 
 
-class BaseTreeSearch:
+class BaseSearchTree:
     """
     Abstract class which all Tree Searches are based?
 
@@ -104,31 +176,14 @@ class BaseTreeSearch:
         pass
 
 
-class BaseCompare(AttributeError, TypeError):
-    """
-    BaseCompare class
-    """
-    __metaclass__ = ABCMeta
-
-    def compare_to(self, o) -> int:
-        """
-
-        :param o: object to be compared to
-        :return: negative integer for less than,
-                 zero for equal
-                 positive integer for greater than
-        """
-        pass
-
-
-class BinarySearchTree(Tree, BaseTreeSearch, BaseCompare):
+class BinaryTreeSearch(Tree, BaseSearchTree):
     _add_return = None
     _delete_return = None
 
     def add(self, item):
         """
         Object item needs to extend BaseCompare
-        :param item: Object to insert
+        :param item: Object/data to insert
         :return: True if inserted. False if the object is contained in the tree
         """
         self.root = self._private_add(self.root, item)
@@ -143,11 +198,11 @@ class BinarySearchTree(Tree, BaseTreeSearch, BaseCompare):
         """
         if not local_root:
             self._add_return = True
-            return Node(item)
-        elif item.compare_to(local_root.data) == 0:
+            return item
+        elif item.compare_to(local_root) == 0:
             self._add_return = False
             return local_root
-        elif item.compare_to(local_root.data) < 0:
+        elif item.compare_to(local_root) < 0:
             local_root.left = self._private_add(local_root.left, item)
             return local_root
         else:
@@ -158,14 +213,14 @@ class BinarySearchTree(Tree, BaseTreeSearch, BaseCompare):
         self.root = self._private_add(self.root, target)
         return True if self.root else False
 
-    def find(self, target: BaseCompare):
+    def find(self, target):
         """
         :param target: Comparable object to find
         :return: Node object ?
         """
         return self._private_find(self.root, target)
 
-    def _private_find(self, local_root: Node, target: BaseCompare):
+    def _private_find(self, local_root: BaseNode, target):
         """
 
         :param local_root: local subtree root
@@ -234,8 +289,7 @@ class BinarySearchTree(Tree, BaseTreeSearch, BaseCompare):
                     local_root.data = self._find_largest_child(local_root.left)
                     return local_root
 
-    def _find_largest_child(self, parent_node: Node):
-
+    def _find_largest_child(self, parent_node: BaseNode):
         if not parent_node.right.right:
             return_node = parent_node.right.data
             parent_node.right = parent_node.right.left
@@ -246,4 +300,3 @@ class BinarySearchTree(Tree, BaseTreeSearch, BaseCompare):
     def remove(self, target):
         self.root = self._private_delete(self.root, target)
         return True if self.root else False
-
